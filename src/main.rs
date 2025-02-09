@@ -13,6 +13,46 @@ fn reverse_signs(expression: &String) -> String {
         .collect();
 }
 
+fn formula(coefficients: &HashMap<i32, f64>) -> String {
+    let mut terms = Vec::new();
+    let mut exponents: Vec<_> = coefficients.keys().collect();
+
+    // Sort exponents in descending order (x³, x², x, constant)
+    exponents.sort_by(|a, b| b.cmp(a));
+
+    for &exp in &exponents {
+        let coeff = coefficients[exp];
+        if coeff == 0.0 {
+            continue;
+        }
+
+        let sign = match coeff {
+            c if c < 0.0 => "-",
+            _ => "+",
+        };
+
+        let coeff = coeff.abs().to_string();
+
+        let term = format!("{} {}x^{}", sign, coeff, exp);
+
+        terms.push(term);
+    }
+
+    // Handle empty equation case
+    if terms.is_empty() {
+        return "0 = 0".to_string();
+    }
+
+    return format!("{} = 0", terms.join(" "));
+}
+
+fn degree(coefficients: &HashMap<i32, f64>) -> String {
+    let mut exponents: Vec<_> = coefficients.keys().collect();
+    exponents.sort_by(|a, b| b.cmp(a));
+
+    return format!("{}", exponents.iter().next().unwrap());
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
 
@@ -20,21 +60,21 @@ fn main() -> Result<(), String> {
         return Err("Bad arguments".to_string());
     }
 
-    let formula = args.get(1).unwrap();
+    let equation = args.get(1).unwrap();
 
-    let formula = formula.replace(" ", "").to_lowercase();
-    if formula.is_empty() {
+    let equation = equation.replace(" ", "").to_lowercase();
+    if equation.is_empty() {
         return Err("Empty equation".to_string());
     }
 
-    let parts: Vec<&str> = formula.split('=').collect();
+    let parts: Vec<&str> = equation.split('=').collect();
     if parts.len() != 2 {
         return Err("Invalid equation format".to_string());
     }
 
     let (mut left, mut right) = (parts[0].to_string(), parts[1].to_string());
 
-    if !right.starts_with('-') && !right.starts_with('+') {
+    if right != "0" && !right.starts_with('-') && !right.starts_with('+') {
         right.insert(0, '+');
     }
 
@@ -42,11 +82,10 @@ fn main() -> Result<(), String> {
         left.insert(0, '+');
     }
 
-    println!("{} = {}", left, right);
-
-    left.push_str(&reverse_signs(&right));
-
-    println!("{} = 0", left);
+    if right != "0" {
+        let reversed = reverse_signs(&right);
+        left.push_str(&reversed);
+    }
 
     let terms_regex = Regex::new(r"([+-]?[^-+]+)").unwrap();
     let term_regex = Regex::new(r"^([+-])?(\d+\.?\d*|\d*\.?\d+)?(\*?x(?:\^(\d+))?)?$").unwrap();
@@ -56,13 +95,9 @@ fn main() -> Result<(), String> {
     for term in terms_regex.find_iter(&left) {
         let term = term.as_str();
 
-        println!("term : {}", term);
-
         let captures = term_regex
             .captures(term)
             .ok_or(format!("Invalid term: {}", term))?;
-
-        println!("{:?}", captures);
 
         let sign = match captures.get(1) {
             Some(s) if s.as_str() == "-" => -1.0,
@@ -93,7 +128,8 @@ fn main() -> Result<(), String> {
         *coefficients.entry(exp).or_insert(0.0) += value;
     }
 
-    println!("coef: {:?}", coefficients);
+    println!("Reduced form: {}", formula(&coefficients));
+    println!("Polynomial degree: {}", degree(&coefficients));
 
     return Ok(());
 }
