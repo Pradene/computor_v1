@@ -50,7 +50,16 @@ fn degree(coefficients: &HashMap<i32, f64>) -> String {
     let mut exponents: Vec<_> = coefficients.keys().collect();
     exponents.sort_by(|a, b| b.cmp(a));
 
-    return format!("{}", exponents.iter().next().unwrap());
+    for &exp in &exponents {
+        let coeff = coefficients[exp];
+        if coeff == 0.0 {
+            continue;
+        }
+
+        return format!("{}", exp);
+    }
+
+    return format!("0");
 }
 
 fn main() -> Result<(), String> {
