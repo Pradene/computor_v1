@@ -381,16 +381,16 @@ impl PolynomialSolver {
         println!();
 
         if discriminant > f64::EPSILON {
-            self.print_two_real_solutions_with_steps(*a, *b, discriminant);
+            self.print_two_real_solutions(*a, *b, discriminant);
         } else if discriminant.abs() < f64::EPSILON {
-            self.print_one_real_solution_with_steps(*a, *b);
+            self.print_one_real_solution(*a, *b);
         } else {
-            self.print_complex_solutions_with_steps(*a, *b, discriminant);
+            self.print_complex_solutions(*a, *b, discriminant);
         }
     }
 
     #[rustfmt::skip]
-    fn print_two_real_solutions_with_steps(&self, a: f64, b: f64, discriminant: f64) {
+    fn print_two_real_solutions(&self, a: f64, b: f64, discriminant: f64) {
         let sqrt_discriminant = discriminant.sqrt();
         let root1 = (-b + sqrt_discriminant) / (2.0 * a);
         let root2 = (-b - sqrt_discriminant) / (2.0 * a);
@@ -417,7 +417,7 @@ impl PolynomialSolver {
     }
 
     #[rustfmt::skip]
-    fn print_one_real_solution_with_steps(&self, a: f64, b: f64) {
+    fn print_one_real_solution(&self, a: f64, b: f64) {
         let root = -b / (2.0 * a);
 
         println!("Step 3: Since Δ = 0, there is one repeated real solution");
@@ -432,7 +432,7 @@ impl PolynomialSolver {
     }
 
     #[rustfmt::skip]
-    fn print_complex_solutions_with_steps(&self, a: f64, b: f64, discriminant: f64) {
+    fn print_complex_solutions(&self, a: f64, b: f64, discriminant: f64) {
         let sqrt_abs_discriminant = discriminant.abs().sqrt();
         let real_part = -b / (2.0 * a);
         let imaginary_part = sqrt_abs_discriminant / (2.0 * a);
