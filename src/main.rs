@@ -24,6 +24,124 @@ impl std::fmt::Display for PolynomialError {
 
 impl Error for PolynomialError {}
 
+#[derive(Debug)]
+enum FractionError {
+    ZeroDenominator,
+    NotRational,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct Fraction {
+    numerator: i64,
+    denominator: i64,
+}
+
+impl Fraction {
+    fn new(numerator: i64, denominator: i64) -> Result<Self, FractionError> {
+        if denominator == 0 {
+            return Err(FractionError::ZeroDenominator);
+        }
+        
+        let mut frac = Self { numerator, denominator };
+        frac.reduce();
+        Ok(frac)
+    }
+    
+    fn reduce(&mut self) {
+        let gcd = self.gcd(self.numerator.abs(), self.denominator.abs());
+        self.numerator /= gcd;
+        self.denominator /= gcd;
+        
+        if self.denominator < 0 {
+            self.numerator = -self.numerator;
+            self.denominator = -self.denominator;
+        }
+    }
+    
+    fn gcd(&self, a: i64, b: i64) -> i64 {
+        if b == 0 {
+            a
+        } else {
+            self.gcd(b, a % b)
+        }
+    }
+}
+
+impl TryFrom<f64> for Fraction {
+    type Error = FractionError;
+    
+    fn try_from(value: f64) -> Result<Self, Self::Error> {
+        if !value.is_finite() {
+            return Err(FractionError::NotRational);
+        }
+        
+        if value == 0.0 {
+            return Ok(Self::new(0, 1)?);
+        }
+        
+        let sign = if value < 0.0 { -1 } else { 1 };
+        let abs_value = value.abs();
+        
+        let mut h_prev2 = 0i64;
+        let mut h_prev1 = 1i64;
+        let mut k_prev2 = 1i64;
+        let mut k_prev1 = 0i64;
+        
+        let mut x = abs_value;
+        const MAX_DENOMINATOR: i64 = 10000;
+        const PRECISION: f64 = 1e-10;
+        
+        for _ in 0..64 {
+            let a = x.floor() as i64;
+            let h_curr = a * h_prev1 + h_prev2;
+            let k_curr = a * k_prev1 + k_prev2;
+            
+            if k_curr > MAX_DENOMINATOR {
+                break;
+            }
+            
+            if (abs_value - (h_curr as f64) / (k_curr as f64)).abs() < PRECISION {
+                return Self::new(sign * h_curr, k_curr);
+            }
+            
+            if (x - a as f64).abs() < PRECISION {
+                return Self::new(sign * h_curr, k_curr);
+            }
+            
+            x = 1.0 / (x - a as f64);
+            h_prev2 = h_prev1;
+            h_prev1 = h_curr;
+            k_prev2 = k_prev1;
+            k_prev1 = k_curr;
+        }
+        
+        Err(FractionError::NotRational)
+    }
+}
+
+impl Into<f64> for Fraction {
+    fn into(self) -> f64 {
+        self.numerator as f64 / self.denominator as f64
+    }
+}
+
+impl std::fmt::Display for Fraction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.denominator == 1 {
+            write!(f, "{}", self.numerator)
+        } else {
+            write!(f, "{}/{}", self.numerator, self.denominator)
+        }
+    }
+}
+
+fn format_solution(value: f64) -> String {
+    match Fraction::try_from(value) {
+        Ok(fraction) => fraction.to_string(),
+        Err(_) => format!("{}", value),
+    }
+}
+
 struct PolynomialSolver {
     coefficients: Coefficients,
 }
@@ -230,6 +348,7 @@ impl PolynomialSolver {
     fn solve_degree_1(&self) {
         let a = self.coefficients.get(&1).unwrap_or(&0.0);
         let b = self.coefficients.get(&0).unwrap_or(&0.0);
+        let solution = -b / a;
 
         println!("Step 1: Identify coefficients from ax + b = 0");
         println!("        a = {}, b = {}", a, b);
@@ -237,13 +356,12 @@ impl PolynomialSolver {
         println!("Step 2: Apply the linear formula x = -b/a");
         println!("        x = -({}) / {}", b, a);
         println!("        x = {} / {}", -b, a);
-        let solution = -b / a;
         println!("        x = {}", solution);
         println!();
         println!("Step 3: Verification");
         println!("        {}({}) + {} = {}", a, solution, b, a * solution + b);
         println!();
-        println!("The solution is: {}", solution);
+        println!("The solution is: {}", format_solution(solution));
     }
 
     #[rustfmt::skip]
@@ -294,8 +412,8 @@ impl PolynomialSolver {
         println!("        x₂ = {}", root2);
         println!();
         println!("Discriminant is strictly positive, the two solutions are:");
-        println!("{}", root1);
-        println!("{}", root2);
+        println!("{}", format_solution(root1));
+        println!("{}", format_solution(root2));
     }
 
     #[rustfmt::skip]
@@ -310,7 +428,7 @@ impl PolynomialSolver {
         println!("        x = {} / {}", -b, 2.0 * a);
         println!("        x = {}", root);
         println!();
-        println!("The solution is: {}", root);
+        println!("The solution is: {}", format_solution(root));
     }
 
     #[rustfmt::skip]
@@ -333,8 +451,8 @@ impl PolynomialSolver {
         println!("        x₂ = {} - {}i", real_part, imaginary_part);
         println!();
         println!("Discriminant is strictly negative, the two complex solutions are:");
-        println!("{} + {}i", real_part, imaginary_part);
-        println!("{} - {}i", real_part, imaginary_part);
+        println!("{} + {}i", format_solution(real_part), format_solution(imaginary_part));
+        println!("{} - {}i", format_solution(real_part), format_solution(imaginary_part));
     }
 }
 
