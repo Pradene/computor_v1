@@ -25,4 +25,13 @@ pub enum FractionError {
     NotRational,
 }
 
+impl std::fmt::Display for FractionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FractionError::ZeroDenominator => write!(f, "Division by zero"),
+            FractionError::NotRational => write!(f, "Cannot represent as rational number"),
+        }
+    }
+}
+
 impl Error for FractionError {}

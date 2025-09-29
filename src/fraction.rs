@@ -92,9 +92,9 @@ impl TryFrom<f64> for Fraction {
     }
 }
 
-impl Into<f64> for Fraction {
-    fn into(self) -> f64 {
-        self.numerator as f64 / self.denominator as f64
+impl From<Fraction> for f64 {
+    fn from(fraction: Fraction) -> f64 {
+        fraction.numerator as f64 / fraction.denominator as f64
     }
 }
 
