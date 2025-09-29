@@ -42,15 +42,13 @@ impl Fraction {
             return Err(FractionError::ZeroDenominator);
         }
 
-        let mut frac = Self {
+        Ok(Self {
             numerator,
             denominator,
-        };
-        frac.reduce();
-        Ok(frac)
+        }.reduced())
     }
 
-    fn reduce(&mut self) {
+    fn reduced(mut self) -> Self {
         let gcd = self.gcd(self.numerator.abs(), self.denominator.abs());
         self.numerator /= gcd;
         self.denominator /= gcd;
@@ -59,6 +57,8 @@ impl Fraction {
             self.numerator = -self.numerator;
             self.denominator = -self.denominator;
         }
+
+        self
     }
 
     fn gcd(&self, a: i64, b: i64) -> i64 {
