@@ -24,3 +24,5 @@ pub enum FractionError {
     ZeroDenominator,
     NotRational,
 }
+
+impl Error for FractionError {}
