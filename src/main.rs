@@ -299,7 +299,11 @@ impl PolynomialSolver {
         };
 
         if is_first {
-            term_body
+            if coefficient < 0.0 {
+                format!("-{}", term_body)
+            } else {
+                term_body
+            }
         } else {
             format!("{} {}", sign, term_body)
         }
