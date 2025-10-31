@@ -34,6 +34,11 @@ impl PolynomialSolver {
         if parts.len() != 2 {
             return Err(PolynomialError::InvalidFormat);
         }
+
+        if parts[0].is_empty() || parts[1].is_empty() {
+            return Err(PolynomialError::InvalidFormat);
+        }
+
         Ok((parts[0].to_string(), parts[1].to_string()))
     }
 
