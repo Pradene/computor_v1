@@ -1,9 +1,9 @@
-mod solver;
 mod error;
 mod fraction;
+mod solver;
 
-use std::env;
 use crate::solver::PolynomialSolver;
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -15,12 +15,10 @@ fn main() {
     }
 
     let equation = &args[1];
-    let mut solver = PolynomialSolver::new();
+    let solver = PolynomialSolver::new();
 
-    match solver.parse_equation(equation) {
-        Ok(()) => {
-            solver.solve();
-        }
+    match solver.solve(equation) {
+        Ok(()) => {}
         Err(e) => {
             eprintln!("Error: {}", e);
         }

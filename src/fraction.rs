@@ -15,7 +15,8 @@ impl Fraction {
         Ok(Self {
             numerator,
             denominator,
-        }.reduced())
+        }
+        .reduced())
     }
 
     pub fn reduced(mut self) -> Self {
@@ -40,10 +41,10 @@ impl Fraction {
     }
 }
 
-impl TryFrom<f64> for Fraction {
+impl TryFrom<f32> for Fraction {
     type Error = FractionError;
 
-    fn try_from(value: f64) -> Result<Self, Self::Error> {
+    fn try_from(value: f32) -> Result<Self, Self::Error> {
         if !value.is_finite() {
             return Err(FractionError::NotRational);
         }
@@ -62,7 +63,7 @@ impl TryFrom<f64> for Fraction {
 
         let mut x = abs_value;
         const MAX_DENOMINATOR: i64 = 10000;
-        const PRECISION: f64 = 1e-10;
+        const PRECISION: f32 = 1e-10;
 
         for _ in 0..64 {
             let a = x.floor() as i64;
@@ -73,15 +74,15 @@ impl TryFrom<f64> for Fraction {
                 break;
             }
 
-            if (abs_value - (h_curr as f64) / (k_curr as f64)).abs() < PRECISION {
+            if (abs_value - (h_curr as f32) / (k_curr as f32)).abs() < PRECISION {
                 return Self::new(sign * h_curr, k_curr);
             }
 
-            if (x - a as f64).abs() < PRECISION {
+            if (x - a as f32).abs() < PRECISION {
                 return Self::new(sign * h_curr, k_curr);
             }
 
-            x = 1.0 / (x - a as f64);
+            x = 1.0 / (x - a as f32);
             h_prev2 = h_prev1;
             h_prev1 = h_curr;
             k_prev2 = k_prev1;
@@ -92,9 +93,9 @@ impl TryFrom<f64> for Fraction {
     }
 }
 
-impl From<Fraction> for f64 {
-    fn from(fraction: Fraction) -> f64 {
-        fraction.numerator as f64 / fraction.denominator as f64
+impl From<Fraction> for f32 {
+    fn from(fraction: Fraction) -> f32 {
+        fraction.numerator as f32 / fraction.denominator as f32
     }
 }
 

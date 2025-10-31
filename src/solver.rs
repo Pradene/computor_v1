@@ -1,30 +1,23 @@
 use regex::Regex;
 use std::collections::HashMap;
 
-use crate::{
-    error::PolynomialError,
-    fraction::Fraction
-};
+use crate::{error::PolynomialError, fraction::Fraction};
 
-type Coefficients = HashMap<i32, f64>;
+type Coefficients = HashMap<i32, f32>;
 
-pub struct PolynomialSolver {
-    coefficients: Coefficients,
-}
+pub struct PolynomialSolver {}
 
 impl PolynomialSolver {
     pub fn new() -> Self {
-        Self {
-            coefficients: HashMap::new(),
-        }
+        Self {}
     }
 
-    pub fn parse_equation(&mut self, equation: &str) -> Result<(), PolynomialError> {
+    pub fn solve(&self, equation: &str) -> Result<(), PolynomialError> {
         let equation = self.normalize_equation(equation)?;
         let (left_side, right_side) = self.split_equation(&equation)?;
         let combined_expression = self.move_terms_to_left(left_side, right_side);
-        self.extract_coefficients(&combined_expression)?;
-        self.remove_zero_coefficients();
+        let coefficients = self.extract_coefficients(&combined_expression)?;
+        self.solve_equation(&coefficients);
         Ok(())
     }
 
@@ -71,9 +64,10 @@ impl PolynomialSolver {
             .collect()
     }
 
-    fn extract_coefficients(&mut self, expression: &str) -> Result<(), PolynomialError> {
+    fn extract_coefficients(&self, expression: &str) -> Result<HashMap<i32, f32>, PolynomialError> {
         let regex_terms = Regex::new(r"([+-]?[^-+]+)").unwrap();
         let regex_term = Regex::new(r"^([+-])?(\d+\.?\d*|\d*\.?\d+)?(\*?x(?:\^(\d+))?)?$").unwrap();
+        let mut coefficients: HashMap<i32, f32> = HashMap::new();
 
         for term_match in regex_terms.find_iter(expression) {
             let term = term_match.as_str();
@@ -84,20 +78,21 @@ impl PolynomialSolver {
             let coefficient_value = self.parse_term_coefficient(&captures)?;
             let exponent = self.parse_term_exponent(&captures)?;
 
-            *self.coefficients.entry(exponent).or_insert(0.0) += coefficient_value;
+            *coefficients.entry(exponent).or_insert(0.0) += coefficient_value;
         }
 
-        Ok(())
+        coefficients.retain(|_, &mut value| value.abs() >= f32::EPSILON);
+        Ok(coefficients)
     }
 
-    fn parse_term_coefficient(&self, captures: &regex::Captures) -> Result<f64, PolynomialError> {
+    fn parse_term_coefficient(&self, captures: &regex::Captures) -> Result<f32, PolynomialError> {
         let sign = match captures.get(1) {
             Some(s) if s.as_str() == "-" => -1.0,
             _ => 1.0,
         };
 
         let coefficient = match captures.get(2) {
-            Some(num) => num.as_str().parse::<f64>().unwrap_or(1.0),
+            Some(num) => num.as_str().parse::<f32>().unwrap_or(1.0),
             None => 1.0,
         };
 
@@ -117,40 +112,35 @@ impl PolynomialSolver {
         }
     }
 
-    fn remove_zero_coefficients(&mut self) {
-        self.coefficients
-            .retain(|_, &mut value| value.abs() > f64::EPSILON);
+    fn get_degree(coefficients: &Coefficients) -> i32 {
+        coefficients.keys().max().copied().unwrap_or(0)
     }
 
-    fn get_degree(&self) -> i32 {
-        self.coefficients.keys().max().copied().unwrap_or(0)
-    }
-
-    fn format_polynomial(&self) -> String {
-        if self.coefficients.is_empty() {
+    fn format_polynomial(coefficients: &Coefficients) -> String {
+        if coefficients.is_empty() {
             return "0 = 0".to_string();
         }
 
         let mut terms = Vec::new();
-        let mut exponents: Vec<_> = self.coefficients.keys().collect();
+        let mut exponents: Vec<_> = coefficients.keys().collect();
 
         exponents.sort_by(|a, b| b.cmp(a));
 
         for (i, &exponent) in exponents.iter().enumerate() {
-            let coefficient = self.coefficients[exponent];
-            let term = self.format_term(coefficient, *exponent, i == 0);
+            let coefficient = coefficients[exponent];
+            let term = Self::format_term(coefficient, *exponent, i == 0);
             terms.push(term);
         }
 
         format!("{} = 0", terms.join(" "))
     }
 
-    fn format_term(&self, coefficient: f64, exponent: i32, is_first: bool) -> String {
+    fn format_term(coefficient: f32, exponent: i32, is_first: bool) -> String {
         let sign = if coefficient < 0.0 { "-" } else { "+" };
 
         let abs_coeff = coefficient.abs();
         let coeff_str = if abs_coeff == 1.0 && exponent != 0 {
-            format!("")
+            String::new()
         } else {
             format!("{}", abs_coeff)
         };
@@ -172,25 +162,25 @@ impl PolynomialSolver {
         }
     }
 
-    pub fn solve(&self) {
-        let degree = self.get_degree();
+    pub fn solve_equation(&self, coefficients: &Coefficients) {
+        let degree = Self::get_degree(coefficients);
 
-        println!("Reduced form: {}", self.format_polynomial());
+        println!("Reduced form: {}", Self::format_polynomial(coefficients));
         println!("Polynomial degree: {}", degree);
         println!();
 
         match degree {
-            0 => self.solve_degree_0(),
-            1 => self.solve_degree_1(),
-            2 => self.solve_degree_2(),
+            0 => Self::solve_degree_0(coefficients),
+            1 => Self::solve_degree_1(coefficients),
+            2 => Self::solve_degree_2(coefficients),
             _ => println!("The polynomial degree is strictly greater than 2, I can't solve."),
         }
     }
 
     #[rustfmt::skip]
-    fn solve_degree_0(&self) {
-        match self.coefficients.get(&0) {
-            Some(&constant) if constant.abs() < f64::EPSILON => {
+    fn solve_degree_0(coefficients: &Coefficients) {
+        match coefficients.get(&0) {
+            Some(&constant) if constant.abs() < f32::EPSILON => {
                 println!("Step 1: The equation simplifies to 0 = 0");
                 println!("Step 2: This is always true regardless of the value of x");
                 println!("Conclusion: Any real number is a solution.");
@@ -209,9 +199,9 @@ impl PolynomialSolver {
     }
 
     #[rustfmt::skip]
-    fn solve_degree_1(&self) {
-        let a = self.coefficients.get(&1).unwrap_or(&0.0);
-        let b = self.coefficients.get(&0).unwrap_or(&0.0);
+    fn solve_degree_1(coefficients: &Coefficients) {
+        let a = coefficients.get(&1).unwrap_or(&0.0);
+        let b = coefficients.get(&0).unwrap_or(&0.0);
         let solution = -b / a;
 
         println!("Step 1: Identify coefficients from ax + b = 0");
@@ -225,14 +215,14 @@ impl PolynomialSolver {
         println!("Step 3: Verification");
         println!("        {}({}) + {} = {}", a, solution, b, a * solution + b);
         println!();
-        println!("The solution is: {}", format_solution(solution));
+        println!("The solution is: {}", Self::format_solution(solution));
     }
 
     #[rustfmt::skip]
-    fn solve_degree_2(&self) {
-        let a = self.coefficients.get(&2).unwrap_or(&0.0);
-        let b = self.coefficients.get(&1).unwrap_or(&0.0);
-        let c = self.coefficients.get(&0).unwrap_or(&0.0);
+    fn solve_degree_2(coefficients: &Coefficients) {
+        let a = coefficients.get(&2).unwrap_or(&0.0);
+        let b = coefficients.get(&1).unwrap_or(&0.0);
+        let c = coefficients.get(&0).unwrap_or(&0.0);
         let discriminant = b * b - 4.0 * a * c;
 
         println!("Step 1: Identify coefficients from ax² + bx + c = 0");
@@ -244,17 +234,17 @@ impl PolynomialSolver {
         println!("        Δ = {}", discriminant);
         println!();
 
-        if discriminant > f64::EPSILON {
-            self.print_two_real_solutions(*a, *b, discriminant);
-        } else if discriminant.abs() < f64::EPSILON {
-            self.print_one_real_solution(*a, *b);
+        if discriminant > f32::EPSILON {
+            Self::print_two_real_solutions(*a, *b, discriminant);
+        } else if discriminant.abs() < f32::EPSILON {
+            Self::print_one_real_solution(*a, *b);
         } else {
-            self.print_complex_solutions(*a, *b, discriminant);
+            Self::print_complex_solutions(*a, *b, discriminant);
         }
     }
 
     #[rustfmt::skip]
-    fn print_two_real_solutions(&self, a: f64, b: f64, discriminant: f64) {
+    fn print_two_real_solutions(a: f32, b: f32, discriminant: f32) {
         let sqrt_discriminant = discriminant.sqrt();
         let root1 = (-b + sqrt_discriminant) / (2.0 * a);
         let root2 = (-b - sqrt_discriminant) / (2.0 * a);
@@ -276,12 +266,12 @@ impl PolynomialSolver {
         println!("        x₂ = {}", root2);
         println!();
         println!("Discriminant is strictly positive, the two solutions are:");
-        println!("{}", format_solution(root1));
-        println!("{}", format_solution(root2));
+        println!("{}", Self::format_solution(root1));
+        println!("{}", Self::format_solution(root2));
     }
 
     #[rustfmt::skip]
-    fn print_one_real_solution(&self, a: f64, b: f64) {
+    fn print_one_real_solution(a: f32, b: f32) {
         let root = -b / (2.0 * a);
 
         println!("Step 3: Since Δ = 0, there is one repeated real solution");
@@ -292,15 +282,15 @@ impl PolynomialSolver {
         println!("        x = {} / {}", -b, 2.0 * a);
         println!("        x = {}", root);
         println!();
-        println!("The solution is: {}", format_solution(root));
+        println!("The solution is: {}", Self::format_solution(root));
     }
 
     #[rustfmt::skip]
-    fn print_complex_solutions(&self, a: f64, b: f64, discriminant: f64) {
+    fn print_complex_solutions(a: f32, b: f32, discriminant: f32) {
         let real_part = -b / (2.0 * a);
         let sqrt_abs_discriminant = discriminant.abs().sqrt();
         let imaginary_part = sqrt_abs_discriminant / (2.0 * a);
-        
+
         println!("Step 3: Since Δ < 0, there are two complex conjugate solutions");
         println!("        Using the quadratic formula: x = (-b ± √Δ) / (2a)");
         println!("        Since √Δ = √({}) = {}i", discriminant, sqrt_abs_discriminant);
@@ -315,14 +305,14 @@ impl PolynomialSolver {
         println!("        x₂ = {} - {}i", real_part, imaginary_part);
         println!();
         println!("Discriminant is strictly negative, the two complex solutions are:");
-        println!("{} + {}i", format_solution(real_part), format_solution(imaginary_part));
-        println!("{} - {}i", format_solution(real_part), format_solution(imaginary_part));
+        println!("{} + {}i", Self::format_solution(real_part), Self::format_solution(imaginary_part));
+        println!("{} - {}i", Self::format_solution(real_part), Self::format_solution(imaginary_part));
     }
-}
 
-fn format_solution(value: f64) -> String {
-    match Fraction::try_from(value) {
-        Ok(fraction) => fraction.to_string(),
-        Err(_) => format!("{}", value),
+    fn format_solution(value: f32) -> String {
+        match Fraction::try_from(value) {
+            Ok(fraction) => fraction.to_string(),
+            Err(_) => format!("{}", value),
+        }
     }
 }
